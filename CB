@@ -1,0 +1,55 @@
+candidate_paths = [
+    HERE / "fusion_minimal.csv",
+    HERE / "dataset" / "fusion_minimal.csv"
+]
+
+out_csv = HERE / "kalman_ais_result.csv"
+
+df = pd.read_csv(csv_path)
+
+needed = ["MMSI", "AIS_Latitude", "AIS_Longitude", "Sog", "Cog"]
+df = df.dropna(subset=needed).copy()
+
+df = df[
+    df["AIS_Latitude"].between(-90, 90) &
+    df["AIS_Longitude"].between(-180, 180)
+].copy()
+
+df["Sog"] = df["Sog"] / 10.0
+df["Cog"] = df["Cog"] / 10.0
+
+
+F = np.array([
+    [1, 0, dt, 0 ],
+    [0, 1, 0,  dt],
+    [0, 0, 1,  0 ],
+    [0, 0, 0,  1 ]
+], dtype=float)
+
+H = np.array([
+    [1, 0, 0, 0],
+    [0, 1, 0, 0]
+], dtype=float)
+
+x = F @ x
+P = F @ P @ F.T + Q
+
+z = np.array([[zxs[i]], [zys[i]]], dtype=float)
+y_res = z - (H @ x)
+S = H @ P @ H.T + Rm
+K = P @ H.T @ np.linalg.inv(S)
+
+x = x + K @ y_res
+P = (I - K @ H) @ P
+
+group["Pred_Lat"] = [p[0] for p in pred_latlon]
+group["Pred_Lon"] = [p[1] for p in pred_latlon]
+group["Kalman_Lat"] = [p[0] for p in filt_latlon]
+group["Kalman_Lon"] = [p[1] for p in filt_latlon]
+
+result_df["Kalman_Shift_m"] = haversine_m(
+    result_df["AIS_Latitude"],
+    result_df["AIS_Longitude"],
+    result_df["Kalman_Lat"],
+    result_df["Kalman_Lon"]
+)

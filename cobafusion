@@ -1,0 +1,60 @@
+import pandas as pd
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+meta_path = HERE / "dataset" / "metadata.csv"
+out_path  = HERE / "dataset" / "fusion_minimal.csv"
+
+if not meta_path.exists():
+    raise FileNotFoundError(f"metadata.csv tidak ditemukan: {meta_path}")
+
+df = pd.read_csv(meta_path)
+
+# rapikan nilai AIS mentah
+if "Sog" in df.columns:
+    df["Sog"] = pd.to_numeric(df["Sog"], errors="coerce")
+    df.loc[df["Sog"] == 1023, "Sog"] = pd.NA
+    df["Sog"] = df["Sog"] / 10
+
+if "Cog" in df.columns:
+    df["Cog"] = pd.to_numeric(df["Cog"], errors="coerce")
+    df.loc[df["Cog"] == 3600, "Cog"] = pd.NA
+    df["Cog"] = df["Cog"] / 10
+
+if "True_Head" in df.columns:
+    df["True_Head"] = pd.to_numeric(df["True_Head"], errors="coerce")
+    df.loc[df["True_Head"] == 511, "True_Head"] = pd.NA
+
+# pilih kolom penting
+sar_cols_candidates = [
+    "scene", "patch_cal", "Incidence"
+]
+
+ais_cols_candidates = [
+    "MMSI", "Sog", "Cog", "True_Head",
+    "AIS_Longitude", "AIS_Latitude",
+    "AIS_Length", "AIS_Width",
+    "Ship_Type", "Nav_Status",
+    "Draught", "Gross_tonnage", "Deadweight"
+]
+
+label_cols_candidates = ["category", "label", "vessel_type", "shiptype", "class"]
+
+keep = [c for c in (sar_cols_candidates + ais_cols_candidates + label_cols_candidates) if c in df.columns]
+
+fusion = df[keep].copy()
+
+# rapikan path patch
+if "patch_cal" in fusion.columns:
+    fusion["patch_cal"] = fusion["patch_cal"].astype(str).str.replace("\\", "/", regex=False)
+
+# buang baris tanpa MMSI
+if "MMSI" in fusion.columns:
+    fusion = fusion.dropna(subset=["MMSI"])
+
+fusion.to_csv(out_path, index=False)
+
+print("Input :", meta_path)
+print("Output:", out_path)
+print("Rows  :", len(fusion), "Cols:", fusion.shape[1])
+print("Kolom output:", list(fusion.columns))

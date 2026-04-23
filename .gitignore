@@ -1,0 +1,16 @@
+__pycache__
+augment/
+dataset/
+env/
+experiments/
+final/
+new/
+old/
+resized/
+resized_new/
+*.txt
+!requirements.txt
+*.npz
+*.save
+# Exclude >100MB file blocked by GitHub
+OpenSARShip2/S1A_IW_SLC__1SDV_20160328T095420_20160328T095447_010568_00FB64_7733.zip
