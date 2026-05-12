@@ -1,0 +1,72 @@
+import pandas as pd
+import folium
+from folium.plugins import MarkerCluster
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+csv_path = HERE / "dataset" / "fusion_minimal.csv"
+out_html = HERE / "dataset" / "map_fusion_points_indonesia.html"
+
+print("Membaca file:", csv_path)
+
+df = pd.read_csv(csv_path)
+
+df = df.dropna(subset=["AIS_Latitude", "AIS_Longitude"])
+df = df[
+    (df["AIS_Latitude"].between(-90, 90)) &
+    (df["AIS_Longitude"].between(-180, 180))
+]
+
+center = [
+    df["AIS_Latitude"].median(),
+    df["AIS_Longitude"].median()
+]
+
+m = folium.Map(location=center, zoom_start=5, tiles=None)
+
+folium.TileLayer(
+    tiles="CartoDB positron",
+    name="Peta Dasar",
+    control=True
+).add_to(m)
+
+cluster = MarkerCluster(name="Titik Kapal").add_to(m)
+
+max_points = min(len(df), 5673)
+df_plot = df.head(max_points)
+
+for _, r in df_plot.iterrows():
+    popup = (
+        f"<b>MMSI:</b> {r.get('MMSI')}<br>"
+        f"<b>SOG / Kecepatan:</b> {r.get('Sog')}<br>"
+        f"<b>COG / Arah Gerak:</b> {r.get('Cog')}<br>"
+        f"<b>Haluan:</b> {r.get('True_Head')}<br>"
+        f"<hr>"
+        f"<b>Scene SAR:</b> {r.get('scene')}<br>"
+        f"<b>Patch CAL:</b> {r.get('patch_cal')}<br>"
+        f"<b>Sudut Insidensi:</b> {r.get('Incidence')}<br>"
+        f"<b>Panjang Kapal:</b> {r.get('AIS_Length')}<br>"
+        f"<b>Lebar Kapal:</b> {r.get('AIS_Width')}<br>"
+        f"<b>Draught / Sarat Air:</b> {r.get('Draught')}<br>"
+        f"<b>Gross Tonnage:</b> {r.get('Gross_tonnage')}<br>"
+        f"<b>Deadweight:</b> {r.get('Deadweight')}<br>"
+        f"<b>Koordinat:</b> {r.get('AIS_Latitude')}, {r.get('AIS_Longitude')}<br>"
+    )
+
+    folium.CircleMarker(
+        location=[r["AIS_Latitude"], r["AIS_Longitude"]],
+        radius=4,
+        color="blue",
+        fill=True,
+        fill_color="blue",
+        fill_opacity=0.75,
+        popup=folium.Popup(popup, max_width=400),
+    ).add_to(cluster)
+
+folium.LayerControl(collapsed=False).add_to(m)
+
+m.save(out_html)
+
+print("✅ Peta berhasil dibuat")
+print("File tersimpan di:", out_html)
+print("Jumlah titik diplot:", len(df_plot), "dari", len(df))

@@ -4,8 +4,8 @@ from folium.plugins import MarkerCluster
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-csv_path = HERE / "dataset" / "fusion_minimal.csv"
-out_html = HERE / "dataset" / "map_by_shiptype_colored.html"
+csv_path = HERE / "dataset" / "fusion_minimal_with_type.csv"
+out_html = HERE / "dataset" / "map_by_shiptype_indonesia.html"
 
 df = pd.read_csv(csv_path)
 
@@ -14,8 +14,8 @@ type_candidates = ["category", "Category", "Ship_type", "Ship_Type", "vessel_typ
 type_col = next((c for c in type_candidates if c in df.columns), None)
 if type_col is None:
     raise ValueError(
-        "Kolom tipe kapal tidak ditemukan di fusion_minimal.csv. "
-        "Coba regenerate fusion_minimal.csv dengan memasukkan 'category' / 'Ship_type' / 'label'.\n"
+        "Kolom tipe kapal tidak ditemukan di fusion_minimal_with_type.csv. "
+        "Coba regenerate fusion_minimal_with_type.csvdengan memasukkan 'category' / 'Ship_type' / 'label'.\n"
         f"Kolom yang ada sekarang: {list(df.columns)}"
     )
 
@@ -29,6 +29,13 @@ df[type_col] = df[type_col].fillna("Unknown").astype(str)
 center = [df["AIS_Latitude"].median(), df["AIS_Longitude"].median()]
 m = folium.Map(location=center, zoom_start=5, tiles="OpenStreetMap")
 
+folium.TileLayer(
+    tiles="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+   attr="Tiles &copy; Esri",
+    name="Peta Dasar",
+    control=True
+).add_to(m)
+
 # ---- warna per jenis kapal (folium color names) ----
 palette = [
     "red", "blue", "green", "orange", "purple", "cadetblue", "darkred", "darkblue",
@@ -40,7 +47,7 @@ types = sorted(df[type_col].unique().tolist())
 color_map = {t: palette[i % len(palette)] for i, t in enumerate(types)}
 
 # ---- layer per tipe + cluster di tiap layer ----
-max_points = min(len(df), 4000)  # naikin kalau mau, tapi makin berat
+max_points = min(len(df), 5673)  # naikin kalau mau, tapi makin berat
 df_plot = df.head(max_points)
 
 layers = {}
