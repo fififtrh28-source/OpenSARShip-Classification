@@ -12,9 +12,6 @@ if not meta_path.exists():
 df = pd.read_csv(meta_path)
 
 
-# =============================
-# HELPER: ambil waktu dari scene
-# =============================
 def extract_scene_start_time(scene_value):
     text = str(scene_value)
     matches = re.findall(r"\d{8}T\d{6}", text)
@@ -55,51 +52,34 @@ if "True_Head" in df.columns:
 
 
 # =============================
-# TAMBAHKAN TIMESTAMP DARI SCENE
+# AMBIL TIMESTAMP DARI SCENE
 # =============================
 
-if "scene" in df.columns:
-    df["SAR_Start_Time"] = df["scene"].apply(extract_scene_start_time)
-    df["SAR_End_Time"] = df["scene"].apply(extract_scene_end_time)
-
-    # waktu utama untuk sistem alert
-    df["Detection_Time"] = df["SAR_Start_Time"]
-else:
-    df["SAR_Start_Time"] = pd.NaT
-    df["SAR_End_Time"] = pd.NaT
-    df["Detection_Time"] = pd.NaT
+df["SAR_Start_Time"] = df["scene"].apply(extract_scene_start_time)
+df["SAR_End_Time"] = df["scene"].apply(extract_scene_end_time)
+df["Detection_Time"] = df["SAR_Start_Time"]
 
 
 # =============================
 # KOORDINAT SAR
 # =============================
-# Pada metadata OpenSARShip, koordinat pusat objek SAR ada di:
-# Center_longitude dan Center_latitude.
-# Kita buat nama baru agar lebih jelas untuk sistem fusion/alert.
 
-if "Center_longitude" in df.columns:
-    df["SAR_Longitude"] = pd.to_numeric(df["Center_longitude"], errors="coerce")
-
-if "Center_latitude" in df.columns:
-    df["SAR_Latitude"] = pd.to_numeric(df["Center_latitude"], errors="coerce")
+df["SAR_Longitude"] = pd.to_numeric(df["Center_longitude"], errors="coerce")
+df["SAR_Latitude"] = pd.to_numeric(df["Center_latitude"], errors="coerce")
 
 
 # =============================
-# PILIH KOLOM PENTING
+# PILIH KOLOM OUTPUT
 # =============================
 
-sar_cols_candidates = [
+output_cols = [
     "scene",
     "patch_cal",
-    "Incidence",
     "SAR_Longitude",
     "SAR_Latitude",
     "SAR_Start_Time",
     "SAR_End_Time",
-    "Detection_Time"
-]
-
-ais_cols_candidates = [
+    "Detection_Time",
     "MMSI",
     "Sog",
     "Cog",
@@ -112,53 +92,21 @@ ais_cols_candidates = [
     "Nav_Status",
     "Draught",
     "Gross_tonnage",
-    "Deadweight"
-]
-
-label_cols_candidates = [
+    "Deadweight",
     "category",
-    "label",
-    "vessel_type",
-    "shiptype",
-    "class"
 ]
 
-keep = [
-    c for c in
-    (sar_cols_candidates + ais_cols_candidates + label_cols_candidates)
-    if c in df.columns
-]
+output_cols = [col for col in output_cols if col in df.columns]
 
-fusion = df[keep].copy()
-
-
-# =============================
-# RAPIKAN PATH PATCH
-# =============================
+fusion = df[output_cols].copy()
 
 if "patch_cal" in fusion.columns:
-    fusion["patch_cal"] = (
-        fusion["patch_cal"]
-        .astype(str)
-        .str.replace("\\", "/", regex=False)
-    )
-
-
-# =============================
-# STATUS AIS
-# =============================
-# Jangan buang MMSI kosong.
-# MMSI kosong bisa menjadi indikasi awal dark vessel.
+    fusion["patch_cal"] = fusion["patch_cal"].astype(str).str.replace("\\", "/", regex=False)
 
 if "MMSI" in fusion.columns:
     fusion["has_ais"] = fusion["MMSI"].notna() & (fusion["MMSI"].astype(str).str.strip() != "")
 else:
     fusion["has_ais"] = False
-
-
-# =============================
-# SIMPAN OUTPUT
-# =============================
 
 fusion.to_csv(out_path, index=False)
 
@@ -167,7 +115,5 @@ print("Output:", out_path)
 print("Rows  :", len(fusion), "Cols:", fusion.shape[1])
 print("Kolom output:", list(fusion.columns))
 
-if "Detection_Time" in fusion.columns:
-    print("\nContoh timestamp:")
-    print(fusion[["scene", "SAR_Start_Time", "SAR_End_Time", "Detection_Time"]].head())
-    
+print("\nContoh timestamp:")
+print(fusion[["scene", "SAR_Start_Time", "SAR_End_Time", "Detection_Time"]].head())

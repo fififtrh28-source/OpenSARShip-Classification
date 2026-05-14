@@ -80,13 +80,14 @@ df = df.sort_values(["MMSI", "_orig_order"]).reset_index(drop=True)
 # =============================
 # HELPER: lat/lon <-> meter
 # =============================
+
 def latlon_to_xy(lat, lon, lat0, lon0):
     R = 6371000.0
     x = np.radians(lon - lon0) * R * np.cos(np.radians(lat0))
     y = np.radians(lat - lat0) * R
     return x, y
 
-def xy_to_latlon(x, y, lat0, lon0):000
+def xy_to_latlon(x, y, lat0, lon0):
     R = 6371000.0
     lat = np.degrees(y / R) + lat0
     lon = np.degrees(x / (R * np.cos(np.radians(lat0)))) + lon0
