@@ -10,6 +10,8 @@ resized/
 resized_new/
 *.txt
 !requirements.txt
+!requirements_dashboard.txt
+output/
 *.npz
 *.save
 # Exclude >100MB file blocked by GitHub
